@@ -40,13 +40,16 @@ def menu_entrada():
 # Responsavel por cadastrar um usuario novo
 
 
-def cadastrar_usuario():       
+def cadastrar_usuario():
     while True:
         limpar_tela()
         print("Cadastro de novo usuario\n")
-        usuario_novo_usuario = str(input("Nome de Usuario: "))
+        usuario_novo_usuario = input("Nome de Usuario: ").strip().lower()
+        if not usuario_novo_usuario:
+            print("O Campo Usuario não pode esta vazia")
+            pausa()
+            return
 
-        
         # Responsavel por verificar se ja existe um usuario utilizando aquele nome
         if os.path.exists("Cadastros.txt"):
             with open("Cadastros.txt", 'r') as arquivo:
@@ -57,6 +60,10 @@ def cadastrar_usuario():
                         return
 
         senha_novo_usuario = str(input("Nova Senha: "))
+        if not usuario_novo_usuario:
+            print("O Campo Senha não pode esta vazia")
+            pausa()
+            return
 
         if len(senha_novo_usuario) >= 4:  # para verificar se a senha tem 4 ou mais caracter
             confirmacao_senha_usuario = str(input("Confirma Senha: "))
@@ -70,9 +77,12 @@ def cadastrar_usuario():
                     pausa()
                     break
             else:
-                input("\nSenhas não parecidas")
+                print("\nSenhas não parecidas")
+                pausa()
+                continue
         else:
             input("\nA senha precisa ter mais do que 4")
+            continue
 
 
 # Responsavel por realizar o login do usuario
@@ -88,12 +98,25 @@ def entrar_usuario():
     while tentativas > 0:
         limpar_tela()
         print("Entrar na conta")
-        usuario_entrar = str(input("Usuario: "))
+        usuario_entrar = str(input("Usuario: ").strip().lower())
+
+        if not usuario_entrar:
+            print("O Campo Usuario não pode esta vazia")
+            pausa()
+            return
         senha_entrar = str(input("Senha: "))
+
+        if not senha_entrar:
+            print("O Campo Senha não pode esta vazia")
+            pausa()
+            return
 
         with open("Cadastros.txt", "r") as arquivo:
             for linha in arquivo:
-                usuario, senha = linha.strip().split(";")
+                partes = linha.strip().split(";")
+                if len(partes) != 2:
+                    continue
+                usuario, senha = partes
 
                 # verificar se usuario e senha são igual do cadastro
                 if usuario_entrar == usuario and senha_entrar == senha:
@@ -112,7 +135,7 @@ def entrar_usuario():
 # Menu principal
 
 
-def menu_principal(usuario_logado):
+def menu_principal(usuario_logado):  # ainda e o basico
     while True:
         limpar_tela()
         print(f"Bem-vindo ao sistema!")
