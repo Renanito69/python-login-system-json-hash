@@ -30,7 +30,7 @@ def menu_entrada():
                     menu_principal(usuario_logado=sucesso)
             elif escolha == 0:
                 print("Saindo")
-                break
+                exit()
 
         except ValueError:
             print("\nERRO!!!")
@@ -132,7 +132,74 @@ def entrar_usuario():
     input("Limite de tentativas atingido!")
     return False
 
+
+def alterar_senha(usuario_logado):
+    while True:
+        limpar_tela()
+        print(f"Alterar Senha do usuario {usuario_logado}\n") # Informa de qual usuario ira alterar a senha
+        senha_atual = input("Senha Atual: ") # Pergunta a senha atual do usuario
+
+        usuarios = list()
+        senha_correta = False
+        with open("Cadastros.txt", 'r') as arquivo: # abre o arquivo em modo leitura (read) e para cada linha do arquivo ele tira os espaços e separa por ";"
+            for linha in arquivo:
+                usuario, senha = linha.strip().split(";")
+                # Depois separa por usuario e senha e compara se o "usuario_logado" e igual o "usuario" do arquivo e compara se a "senha" e igual a "senha_atual"
+                if usuario == usuario_logado and senha == senha_atual:
+                    # Se for verdade a "senha_correta" passa a ser True e pergunta qual sera a nova senha com "nova_senha"
+                    senha_correta = True
+                    nova_senha = input("Nova senha: ")
+                    # Depois adiciona na lista "usuarios"
+                    usuarios.append(f"{usuario};{nova_senha}" + '\n')
+
+                else:
+                    usuarios.append(linha)
+
+        if not senha_correta: # Se a "senha_correta" for False retornara "Senha atual incorreta"
+            print("Senha atual incorreta")
+            pausa()
+            continue
+
+        with open("Cadastros.txt", 'w') as arquivo: # Agora ira abrir o arquivo como escrita (write) e ira adicionar a lista "usuarios" no arquivo
+            arquivo.writelines(usuarios)
+
+        print("Senha alterada com sucesso")
+        return
 # Menu principal
+
+
+def deletar_conta(usuario_logado):  # Responsavel por deletar uma conta do arquivo
+    while True:
+        limpar_tela()
+        print("Deletar conta!!!")
+        remover_usuario = input(
+            f'Deseja remover o usuario "{usuario_logado}" [S/N]: ').upper().strip()  # Deixa todas as letrar em maiuscula utilizando o .upper() e retira os espaços utilizando o .strip()
+        if remover_usuario[0] == "S":  # Verifica se a primeira letra e "S"
+            linha_temporario = list()  # Cria uma lista temporaria
+            # Abre o arquivo em modo leitura(read) e verifica em cada linha do arquivo se o "usuarui_logado" esta la, se não estiver adiciona na "linha_temporario"
+            with open("Cadastros.txt", 'r') as arquivo:
+                for linha in arquivo:
+                    if usuario_logado not in linha:
+                        linha_temporario.append(linha)
+
+            # Agora abre o arquivo em modo de escrita(write) e adiciona a "linha_temporario" em cada linha do arquivo removendo o usuario
+            with open("Cadastros.txt", 'w') as arquivo:
+                arquivo.writelines(linha_temporario)
+            print(f"O Usuario {usuario_logado} Foi deletado com sucesso!!!")
+            print("Desconectado")
+            pausa()
+            menu_entrada()  # Logo apos remover o usuario ele carrega a tela de loguin novamente
+
+        # Se o "remover_usuario[0]" for igual a "N" ele cancela a operação e volta para o menu principal
+        elif remover_usuario[0] == "N":
+            print("Operação cancelada")
+            print("Voltando para o menu principal")
+            break
+
+        else:  # Se for qualquer outra letra aparece um "print" pedindo para digitar "S" ou "N" e joga no inicio do loot denovo
+            print('Digite "S" para sim e "N" para não')
+            pausa()
+            continue
 
 
 def menu_principal(usuario_logado):  # ainda e o basico
@@ -140,29 +207,34 @@ def menu_principal(usuario_logado):  # ainda e o basico
         limpar_tela()
         print(f"Bem-vindo ao sistema!")
         print(f"Usuario: {usuario_logado}")
-        print("0 - Desconectar")
+        print("0 - Encerar sistema")
         print("1 - Listar usuarios")
         print("2 - Alterar senha")
         print("3 - Deletar minha conta")
-        print("4 - Sair do sistema")
-        escolha = int(input("\nEscolha: "))
-        if escolha == 1:
-            pass
-        if escolha == 2:
-            pass
-        if escolha == 3:
-            pass
-        if escolha == 4:
-            print("Encerando do Sistema")
-            exit()
-        if escolha == 0:
-            print("Desconectanto")
-            pausa()
-            break
+        print("9 - Sair da conta")
+        try:
+            escolha = int(input("\nEscolha: "))
+            if escolha == 1:
+                pass
+            if escolha == 2:
+                alterar_senha(usuario_logado)
+            if escolha == 3:
+                deletar_conta(usuario_logado)
+                pass
+            if escolha == 0:
+                print("Encerando do Sistema")
+                exit()
+            if escolha == 9:
+                print("Desconectanto")
+                pausa()
+                break
 
-        pausa()
+            pausa()
+        except ValueError:
+            print("\nERRO!!!")
+            print("Coloque apenas numeros")
+            pausa()
 
 
 # Programa inicial
-
 menu_entrada()
