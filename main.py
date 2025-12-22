@@ -1,4 +1,5 @@
 import os
+import json
 
 
 def limpar_tela():
@@ -41,41 +42,49 @@ def menu_entrada():
 
 
 def cadastrar_usuario():
+
+    login = dict()
     while True:
         limpar_tela()
         print("Cadastro de novo usuario\n")
-        usuario_novo_usuario = input("Nome de Usuario: ").strip().lower()
-        if not usuario_novo_usuario:
+        login['usuario'] = input("Nome de Usuario: ").strip().lower()
+        if not login['usuario']:
             print("O Campo Usuario não pode esta vazia")
             pausa()
             return
 
+        if not os.path.exists("Cadastros.json"):
+            cadastrados = {'Usuarios cadastrados': []}
+
         # Responsavel por verificar se ja existe um usuario utilizando aquele nome
-        if os.path.exists("Cadastros.txt"):
-            with open("Cadastros.txt", 'r') as arquivo:
-                for linha in arquivo:
-                    if usuario_novo_usuario in linha.strip().split(';'):
+        if os.path.exists("Cadastros.json"):
+            with open("Cadastros.json", 'r') as arquivo:
+                cadastrados = json.load(arquivo)
+                for linha in cadastrados:
+                    if login['usuario'] in linha:
                         print("Usuario ja existe")
                         pausa()
                         return
 
-        senha_novo_usuario = str(input("Nova Senha: "))
-        if not usuario_novo_usuario:
+        login['senha'] = str(input("Senha: "))
+        if not login['usuario']:
             print("O Campo Senha não pode esta vazia")
             pausa()
             return
 
-        if len(senha_novo_usuario) >= 4:  # para verificar se a senha tem 4 ou mais caracter
+        if len(login['senha']) >= 4:  # para verificar se a senha tem 4 ou mais caracter
             confirmacao_senha_usuario = str(input("Confirma Senha: "))
 
-            if confirmacao_senha_usuario == senha_novo_usuario:  # para confirmar a senha
-                # Responsavel por adicionar o (usuario;senha) no .txt
-                with open("Cadastros.txt", "a") as arquivo:
-                    arquivo.write(
-                        f"{usuario_novo_usuario};{senha_novo_usuario}" + '\n')
-                    print("\nUsuario cadastrado com sucesso!")
-                    pausa()
-                    break
+            # para confirmar a senha
+            if confirmacao_senha_usuario == login['senha']:
+                cadastrados["Usuarios cadastrados"].append(login)
+                # Responsavel por adicionar o (usuario;senha) no .json
+
+                with open("Cadastros.json", "w") as arquivo:
+                    json.dump(cadastrados, arquivo, indent=4)
+                print("\nUsuario cadastrado com sucesso!")
+                pausa()
+                break
             else:
                 print("\nSenhas não parecidas")
                 pausa()
@@ -87,8 +96,8 @@ def cadastrar_usuario():
 
 # Responsavel por realizar o login do usuario
 def entrar_usuario():
-    # verifica se o arquivo ("Cadastros.txt") existe
-    if not os.path.exists("Cadastros.txt"):
+    # verifica se o arquivo ("Cadastros.json") existe
+    if not os.path.exists("Cadastros.json"):
         print("Arquivo não encontrado")
         pausa()
         return False
@@ -111,15 +120,11 @@ def entrar_usuario():
             pausa()
             return
 
-        with open("Cadastros.txt", "r") as arquivo:
-            for linha in arquivo:
-                partes = linha.strip().split(";")
-                if len(partes) != 2:
-                    continue
-                usuario, senha = partes
-
+        with open("Cadastros.json", "r") as arquivo:
+            cadastrados = json.load(arquivo)
+            for usuario in cadastrados['Usuarios cadastrados']:
                 # verificar se usuario e senha são igual do cadastro
-                if usuario_entrar == usuario and senha_entrar == senha:
+                if usuario_entrar == usuario['usuario'] and senha_entrar == usuario['senha']:
                     print("Login realizado com sucesso!")
                     pausa()
 
@@ -136,32 +141,31 @@ def entrar_usuario():
 def alterar_senha(usuario_logado):
     while True:
         limpar_tela()
-        print(f"Alterar Senha do usuario {usuario_logado}\n") # Informa de qual usuario ira alterar a senha
-        senha_atual = input("Senha Atual: ") # Pergunta a senha atual do usuario
+        # Informa de qual usuario ira alterar a senha
+        print(f"Alterar Senha do usuario {usuario_logado}\n")
+        # Pergunta a senha atual do usuario
+        senha_atual = input("Senha Atual: ")
 
-        usuarios = list()
         senha_correta = False
-        with open("Cadastros.txt", 'r') as arquivo: # abre o arquivo em modo leitura (read) e para cada linha do arquivo ele tira os espaços e separa por ";"
-            for linha in arquivo:
-                usuario, senha = linha.strip().split(";")
-                # Depois separa por usuario e senha e compara se o "usuario_logado" e igual o "usuario" do arquivo e compara se a "senha" e igual a "senha_atual"
-                if usuario == usuario_logado and senha == senha_atual:
+        # abre o arquivo em modo leitura (read) e para cada linha do arquivo ele tira os espaços e separa por ";"
+        with open("Cadastros.json", 'r') as arquivo:
+            cadastrados = json.load(arquivo)
+            # Depois separa por usuario e senha e compara se o "usuario_logado" e igual o "usuario" do arquivo e compara se a "senha" e igual a "senha_atual"
+            for posicao, usuario in enumerate(cadastrados['Usuarios cadastrados']):
+                if usuario['usuario'] == usuario_logado and usuario['senha'] == senha_atual:
                     # Se for verdade a "senha_correta" passa a ser True e pergunta qual sera a nova senha com "nova_senha"
                     senha_correta = True
                     nova_senha = input("Nova senha: ")
                     # Depois adiciona na lista "usuarios"
-                    usuarios.append(f"{usuario};{nova_senha}" + '\n')
+                    cadastrados["Usuarios cadastrados"][posicao]["senha"] = nova_senha
+                    print(cadastrados)
+                    with open("Cadastros.json", "w") as arquivo:
+                        json.dump(cadastrados, arquivo, indent=4)
 
-                else:
-                    usuarios.append(linha)
-
-        if not senha_correta: # Se a "senha_correta" for False retornara "Senha atual incorreta"
+        if not senha_correta:  # Se a "senha_correta" for False retornara "Senha atual incorreta"
             print("Senha atual incorreta")
             pausa()
             continue
-
-        with open("Cadastros.txt", 'w') as arquivo: # Agora ira abrir o arquivo como escrita (write) e ira adicionar a lista "usuarios" no arquivo
-            arquivo.writelines(usuarios)
 
         print("Senha alterada com sucesso")
         return
@@ -177,14 +181,16 @@ def deletar_conta(usuario_logado):  # Responsavel por deletar uma conta do arqui
         if remover_usuario[0] == "S":  # Verifica se a primeira letra e "S"
             linha_temporario = list()  # Cria uma lista temporaria
             # Abre o arquivo em modo leitura(read) e verifica em cada linha do arquivo se o "usuarui_logado" esta la, se não estiver adiciona na "linha_temporario"
-            with open("Cadastros.txt", 'r') as arquivo:
-                for linha in arquivo:
-                    if usuario_logado not in linha:
-                        linha_temporario.append(linha)
 
-            # Agora abre o arquivo em modo de escrita(write) e adiciona a "linha_temporario" em cada linha do arquivo removendo o usuario
-            with open("Cadastros.txt", 'w') as arquivo:
-                arquivo.writelines(linha_temporario)
+            with open("Cadastros.json", 'r') as arquivo:
+                cadastrados = json.load(arquivo)
+                cadastrados["Usuarios cadastrados"] = [
+                    nome for nome in cadastrados["Usuarios cadastrados"]
+                    if nome["usuario"] != usuario_logado]
+
+                # Agora abre o arquivo em modo de escrita(write) e adiciona a "linha_temporario" em cada linha do arquivo removendo o usuario
+            with open("Cadastros.json", "w") as arquivo:
+                json.dump(cadastrados, arquivo, indent=4)
             print(f"O Usuario {usuario_logado} Foi deletado com sucesso!!!")
             print("Desconectado")
             pausa()
@@ -209,8 +215,8 @@ def menu_principal(usuario_logado):  # ainda e o basico
         print(f"Usuario: {usuario_logado}")
         print("0 - Encerar sistema")
         print("1 - Listar usuarios")
-        print("2 - Alterar senha")
-        print("3 - Deletar minha conta")
+        print("2 - Alterar senha") #OK
+        print("3 - Deletar minha conta") #OK
         print("9 - Sair da conta")
         try:
             escolha = int(input("\nEscolha: "))
