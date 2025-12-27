@@ -1,19 +1,28 @@
 import os
 import json
+import hashlib
+
+# ==============================
+# FUNÇÕES AUXILIARES
+# ==============================
 
 
 def limpar_tela():
+    """Limpa a tela do terminal (Windows)."""
     os.system("cls")
 
 
 def pausa():
-    input("precione enter para continuar...")
+    """Pausa o programa até o usuário pressionar Enter."""
+    input("pressione enter para continuar...")
 
 
-# Menu de entrada
-
+# ==============================
+# MENU DE ENTRADA
+# ==============================
 
 def menu_entrada():
+    """Menu inicial do sistema (Cadastro / Login / Sair)."""
     while True:
         limpar_tela()
         print("1 - Cadastro")
@@ -27,6 +36,7 @@ def menu_entrada():
                 cadastrar_usuario()
             elif escolha == 2:
                 sucesso = entrar_usuario()
+                # Se o login for bem-sucedido, entra no menu principal
                 if sucesso:
                     menu_principal(usuario_logado=sucesso)
             elif escolha == 0:
@@ -38,65 +48,91 @@ def menu_entrada():
             print("Coloque apenas numeros")
             pausa()
 
-# Responsavel por cadastrar um usuario novo
 
+# ==============================
+# CADASTRO DE USUÁRIO
+# ==============================
 
 def cadastrar_usuario():
-
+    """
+    Cadastra um novo usuário no arquivo JSON.
+    Estrutura do JSON:
+    {
+        "Usuarios cadastrados": [
+            {"usuario": "...", "senha": "..."}
+        ]
+    }
+    """
     login = dict()
+
     while True:
         limpar_tela()
         print("Cadastro de novo usuario\n")
+
+        # Captura o nome do usuário
         login['usuario'] = input("Nome de Usuario: ").strip().lower()
+
+        # Verifica se o campo está vazio
         if not login['usuario']:
             print("O Campo Usuario não pode esta vazia")
             pausa()
             return
 
+        # Se o arquivo não existir, cria a estrutura inicial
         if not os.path.exists("Cadastros.json"):
             cadastrados = {'Usuarios cadastrados': []}
-
-        # Responsavel por verificar se ja existe um usuario utilizando aquele nome
-        if os.path.exists("Cadastros.json"):
+        else:
+            # Caso exista, carrega os dados
             with open("Cadastros.json", 'r') as arquivo:
                 cadastrados = json.load(arquivo)
-                for linha in cadastrados:
-                    if login['usuario'] in linha:
-                        print("Usuario ja existe")
-                        pausa()
-                        return
 
-        login['senha'] = str(input("Senha: "))
-        if not login['usuario']:
+            # Verifica se o usuário já existe
+            for usuario in cadastrados['Usuarios cadastrados']:
+                if login['usuario'] == usuario['usuario']:
+                    print("Usuario ja existe")
+                    pausa()
+                    return
+
+        # Captura a senha
+        senha = input("Senha: ")
+
+        # Verifica se a senha está vazia
+        if not senha:
             print("O Campo Senha não pode esta vazia")
             pausa()
             return
 
-        if len(login['senha']) >= 4:  # para verificar se a senha tem 4 ou mais caracter
-            confirmacao_senha_usuario = str(input("Confirma Senha: "))
+        # Verifica tamanho mínimo da senha
+        if len(senha) >= 4:
+            confirmacao = input("Confirma Senha: ")
 
-            # para confirmar a senha
-            if confirmacao_senha_usuario == login['senha']:
+            # Confirma se as senhas são iguais
+            if confirmacao == senha:
+                hash_senha_confirmacao = hashlib.sha256(confirmacao.encode())
+                login['senha'] = hash_senha_confirmacao.hexdigest()
                 cadastrados["Usuarios cadastrados"].append(login)
-                # Responsavel por adicionar o (usuario;senha) no .json
 
+                # Salva no arquivo JSON
                 with open("Cadastros.json", "w") as arquivo:
                     json.dump(cadastrados, arquivo, indent=4)
+
                 print("\nUsuario cadastrado com sucesso!")
                 pausa()
                 break
             else:
                 print("\nSenhas não parecidas")
                 pausa()
-                continue
         else:
-            input("\nA senha precisa ter mais do que 4")
-            continue
+            print("\nA senha precisa ter mais do que 4")
+            pausa()
 
 
-# Responsavel por realizar o login do usuario
+# ==============================
+# LOGIN DO USUÁRIO
+# ==============================
+
 def entrar_usuario():
-    # verifica se o arquivo ("Cadastros.json") existe
+    """Realiza o login do usuário verificando usuário e senha no JSON."""
     if not os.path.exists("Cadastros.json"):
         print("Arquivo não encontrado")
         pausa()
@@ -107,140 +143,168 @@ def entrar_usuario():
     while tentativas > 0:
         limpar_tela()
         print("Entrar na conta")
-        usuario_entrar = str(input("Usuario: ").strip().lower())
 
-        if not usuario_entrar:
-            print("O Campo Usuario não pode esta vazia")
-            pausa()
-            return
-        senha_entrar = str(input("Senha: "))
+        usuario_entrar = input("Usuario: ").strip().lower()
+        senha_entrar = input("Senha: ")
 
-        if not senha_entrar:
-            print("O Campo Senha não pode esta vazia")
-            pausa()
-            return
-
+        senha_hash = hashlib.sha256(senha_entrar.encode())
+        verificar_senha_hash = senha_hash.hexdigest()
         with open("Cadastros.json", "r") as arquivo:
             cadastrados = json.load(arquivo)
+
+            # Verifica cada usuário cadastrado
             for usuario in cadastrados['Usuarios cadastrados']:
-                # verificar se usuario e senha são igual do cadastro
-                if usuario_entrar == usuario['usuario'] and senha_entrar == usuario['senha']:
+                if usuario_entrar == usuario['usuario'] and verificar_senha_hash == usuario['senha']:
                     print("Login realizado com sucesso!")
                     pausa()
-
                     return usuario_entrar
 
         tentativas -= 1
         print("Usuario ou senha incorretos")
-        input(f"Login incorreto. Tentativas restantes: {tentativas}")
+        input(f"Tentativas restantes: {tentativas}")
 
     input("Limite de tentativas atingido!")
     return False
 
 
+# ==============================
+# ALTERAR SENHA
+# ==============================
+
 def alterar_senha(usuario_logado):
+    """Permite alterar a senha do usuário logado."""
     while True:
         limpar_tela()
-        # Informa de qual usuario ira alterar a senha
         print(f"Alterar Senha do usuario {usuario_logado}\n")
-        # Pergunta a senha atual do usuario
+
         senha_atual = input("Senha Atual: ")
+        hash_senha = hashlib.sha256(senha_atual.encode())
+        verificar_hash_senha = hash_senha.hexdigest()
+        with open("Cadastros.json", "r") as arquivo:
+            cadastrados = json.load(arquivo)
 
         senha_correta = False
-        # abre o arquivo em modo leitura (read) e para cada linha do arquivo ele tira os espaços e separa por ";"
-        with open("Cadastros.json", 'r') as arquivo:
-            cadastrados = json.load(arquivo)
-            # Depois separa por usuario e senha e compara se o "usuario_logado" e igual o "usuario" do arquivo e compara se a "senha" e igual a "senha_atual"
-            for posicao, usuario in enumerate(cadastrados['Usuarios cadastrados']):
-                if usuario['usuario'] == usuario_logado and usuario['senha'] == senha_atual:
-                    # Se for verdade a "senha_correta" passa a ser True e pergunta qual sera a nova senha com "nova_senha"
-                    senha_correta = True
-                    nova_senha = input("Nova senha: ")
-                    # Depois adiciona na lista "usuarios"
-                    cadastrados["Usuarios cadastrados"][posicao]["senha"] = nova_senha
-                    print(cadastrados)
-                    with open("Cadastros.json", "w") as arquivo:
-                        json.dump(cadastrados, arquivo, indent=4)
 
-        if not senha_correta:  # Se a "senha_correta" for False retornara "Senha atual incorreta"
+        # Procura o usuário logado
+        for usuario in cadastrados['Usuarios cadastrados']:
+            if usuario['usuario'] == usuario_logado and usuario['senha'] == verificar_hash_senha:
+                senha_correta = True
+                nova_senha = input("Nova senha: ")
+                if len(nova_senha) >= 4:
+                    confirma_nova_senha = input("Confirmar nova senha: ")
+                    if confirma_nova_senha == nova_senha:
+                        hash_senha = hashlib.sha256(nova_senha.encode())
+                        usuario['senha'] = hash_senha.hexdigest()
+                        break
+                    else:
+                        print("As senhas não sao iguais")
+                        pausa()
+                else:
+                    print("Senha muito pequena")
+                    pausa()
+        if not senha_correta:
             print("Senha atual incorreta")
             pausa()
             continue
 
+        # Salva a nova senha
+        with open("Cadastros.json", "w") as arquivo:
+            json.dump(cadastrados, arquivo, indent=4)
+
         print("Senha alterada com sucesso")
+        pausa()
         return
-# Menu principal
 
 
-def deletar_conta(usuario_logado):  # Responsavel por deletar uma conta do arquivo
+# ==============================
+# DELETAR CONTA
+# ==============================
+
+def deletar_conta(usuario_logado):
+    """Remove definitivamente o usuário logado do sistema."""
     while True:
         limpar_tela()
-        print("Deletar conta!!!")
-        remover_usuario = input(
-            f'Deseja remover o usuario "{usuario_logado}" [S/N]: ').upper().strip()  # Deixa todas as letrar em maiuscula utilizando o .upper() e retira os espaços utilizando o .strip()
-        if remover_usuario[0] == "S":  # Verifica se a primeira letra e "S"
-            linha_temporario = list()  # Cria uma lista temporaria
-            # Abre o arquivo em modo leitura(read) e verifica em cada linha do arquivo se o "usuarui_logado" esta la, se não estiver adiciona na "linha_temporario"
+        remover = input(
+            f'Deseja remover o usuario "{usuario_logado}" [S/N]: ').upper().strip()
 
-            with open("Cadastros.json", 'r') as arquivo:
+        if remover.startswith("S"):
+            with open("Cadastros.json", "r") as arquivo:
                 cadastrados = json.load(arquivo)
-                cadastrados["Usuarios cadastrados"] = [
-                    nome for nome in cadastrados["Usuarios cadastrados"]
-                    if nome["usuario"] != usuario_logado]
 
-                # Agora abre o arquivo em modo de escrita(write) e adiciona a "linha_temporario" em cada linha do arquivo removendo o usuario
+            # Remove o usuário da lista
+            cadastrados['Usuarios cadastrados'] = [
+                nome for nome in cadastrados['Usuarios cadastrados']
+                if nome['usuario'] != usuario_logado
+            ]
+
             with open("Cadastros.json", "w") as arquivo:
                 json.dump(cadastrados, arquivo, indent=4)
-            print(f"O Usuario {usuario_logado} Foi deletado com sucesso!!!")
-            print("Desconectado")
-            pausa()
-            menu_entrada()  # Logo apos remover o usuario ele carrega a tela de loguin novamente
 
-        # Se o "remover_usuario[0]" for igual a "N" ele cancela a operação e volta para o menu principal
-        elif remover_usuario[0] == "N":
+            print("Conta removida com sucesso!")
+            pausa()
+            menu_entrada()
+
+        elif remover.startswith("N"):
             print("Operação cancelada")
-            print("Voltando para o menu principal")
+            pausa()
             break
 
-        else:  # Se for qualquer outra letra aparece um "print" pedindo para digitar "S" ou "N" e joga no inicio do loot denovo
-            print('Digite "S" para sim e "N" para não')
+        else:
+            print('Digite "S" para sim ou "N" para não')
             pausa()
-            continue
+
+# ==============================
+# LISTAR USUARIOS
+# ==============================
 
 
-def menu_principal(usuario_logado):  # ainda e o basico
+def listar_usuarios():
+    with open("Cadastros.json", 'r') as arquivo:
+        cadastrados = json.load(arquivo)
+        for posicao, usuario in enumerate(cadastrados["Usuarios cadastrados"]):
+            print(f"{posicao+1} - {usuario['usuario']}")
+        pausa()
+
+
+# ==============================
+# MENU PRINCIPAL
+# ==============================
+
+def menu_principal(usuario_logado):
+    """Menu após login."""
     while True:
         limpar_tela()
-        print(f"Bem-vindo ao sistema!")
+        print("Bem-vindo ao sistema!")
         print(f"Usuario: {usuario_logado}")
-        print("0 - Encerar sistema")
-        print("1 - Listar usuarios")
-        print("2 - Alterar senha") #OK
-        print("3 - Deletar minha conta") #OK
+        print("0 - Encerrar sistema")
+        print("1 - Listar Usuarios")
+        print("2 - Alterar senha")
+        print("3 - Deletar minha conta")
         print("9 - Sair da conta")
+
         try:
             escolha = int(input("\nEscolha: "))
+
             if escolha == 1:
-                pass
-            if escolha == 2:
+                listar_usuarios()
+            elif escolha == 2:
                 alterar_senha(usuario_logado)
-            if escolha == 3:
+            elif escolha == 3:
                 deletar_conta(usuario_logado)
-                pass
-            if escolha == 0:
-                print("Encerando do Sistema")
+            elif escolha == 0:
+                print("Fechando sistema")
                 exit()
-            if escolha == 9:
-                print("Desconectanto")
-                pausa()
+            elif escolha == 9:
+                print("Desconectando")
                 break
 
-            pausa()
         except ValueError:
-            print("\nERRO!!!")
-            print("Coloque apenas numeros")
+            print("Digite apenas numeros")
             pausa()
 
 
-# Programa inicial
+# ==============================
+# PROGRAMA PRINCIPAL
+# ==============================
+
 menu_entrada()
